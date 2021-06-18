@@ -1,8 +1,41 @@
 import Head from "next/head";
 import styles from "../styles/Home.module.css";
-import { connectToDatabase } from "../utilities/database";
+import connectDB from "../utilities/mongodb";
+import mongoose from "mongoose";
 
-export default function Home({ isConnected }) {
+// Methods
+
+export default function Home({ mongooseState }) {
+  const createUser = () => {
+    const user = {
+      name: Math.random()
+        .toString(36)
+        .replace(/[^a-z]+/g, "")
+        .substr(0, 5),
+      email: Math.random()
+        .toString(36)
+        .replace(/[^a-z]+/g, "")
+        .substr(0, 5),
+    };
+
+    // MongoDB connected
+    if (mongooseState === "connected") {
+      fetch("http://localhost:3000/api/user", {
+        method: "POST",
+        body: JSON.stringify(user),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+        .then((data) => data.json())
+        .then((res) => console.log(res))
+        .catch((error) => console.log(error));
+    } else {
+      // Not connected
+      console.log("Not connected");
+    }
+  };
+
   return (
     <div className={styles.container}>
       <Head>
@@ -15,19 +48,14 @@ export default function Home({ isConnected }) {
           Welcome to <a href="https://nextjs.org">Next.js!</a>
         </h1>
 
-        {isConnected ? (
-          <h2 className="subtitle">You are connected to MongoDB</h2>
-        ) : (
-          <h2 className="subtitle">
-            You are NOT connected to MongoDB. Check the <code>README.md</code>{" "}
-            for instructions.
-          </h2>
-        )}
+        <h2 className="subtitle">MongoDB: {mongooseState}</h2>
 
         <p className={styles.description}>
           Get started by editing{" "}
           <code className={styles.code}>pages/index.js</code>
         </p>
+
+        <button onClick={createUser}>Create User</button>
 
         <div className={styles.grid}>
           <a href="https://nextjs.org/docs" className={styles.card}>
@@ -75,9 +103,28 @@ export default function Home({ isConnected }) {
 }
 
 export async function getServerSideProps(context) {
-  const { client } = await connectToDatabase();
-  const isConnected = await client.isConnected();
+  const handler = await connectDB();
+  console.log(mongoose.connection.readyState);
+  const readyState = mongoose.connection.readyState;
+  let mongooseState = "disconnected";
+  if (readyState === 1) mongooseState = "connected";
+  if (readyState === 2) mongooseState = "connecting";
+  if (readyState === 3) mongooseState = "disconnecting";
+
+  /*  console.log("connected");
+  const user = { name: "Hello", email: "World" };
+  fetch("http://localhost:3000/api/user", {
+    method: "POST",
+    body: JSON.stringify(user),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+    .then((data) => data.json())
+    .then((res) => console.log(res))
+    .catch((error) => console.log(error)); */
+  /* const isConnected = await client.isConnected(); */
   return {
-    props: { isConnected },
+    props: { mongooseState },
   };
 }
