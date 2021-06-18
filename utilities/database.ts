@@ -8,11 +8,23 @@ const MONGODB_DB = process.env.MONGO_DB;
 /* const MONGODB_URI = process.env.MONGODB_URI; */
 /* const MONGODB_DB = process.env.MONGODB_DB; */
 
+declare global {
+  namespace NodeJS {
+    interface Global {
+      mongo: {
+        conn: MongoConnection | null;
+        promise: Promise<MongoConnection> | null;
+      };
+    }
+  }
+}
+
 // Test enviroment
 const DB_ENVIROMENTALS = [
   { env: "MONGO_DB_USER", value: MONGO_DB_USER },
   { env: "MONGO_DB_PASS", value: MONGO_DB_PASS },
   { env: "MONGO_DB_URI", value: MONGO_DB_URI },
+  { env: "MONGODB_DB", value: MONGODB_DB },
 ];
 
 DB_ENVIROMENTALS.forEach((envObject) => {
@@ -46,12 +58,14 @@ export async function connectToDatabase() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     };
-    cached.promise = MongoClient.connect(DATABASE_URI, opts).then((client) => {
-      return {
-        client,
-        db: client.db(MONGODB_DB),
-      };
-    });
+    cached.promise = MongoClient.connect(DATABASE_URI, opts).then(
+      (client: typeof MongoClient) => {
+        return {
+          client,
+          db: client.db(MONGODB_DB),
+        };
+      }
+    );
   }
   cached.conn = await cached.promise;
   return cached.conn;
